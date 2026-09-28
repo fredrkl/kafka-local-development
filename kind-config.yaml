@@ -1,0 +1,66 @@
+---
+# Kind cluster for testing Strimzi.
+#
+# Create:  kind create cluster --config kind-config.yaml
+# Delete:  kind delete cluster --name strimzi
+#
+# One control plane and three workers, so the Kafka brokers can be spread
+# across nodes. That way pod anti-affinity, rack awareness and rolling
+# updates behave like they would on a real cluster.
+#
+# The NodePorts below are mapped to localhost, so clients on the host can
+# reach Kafka through a Strimzi `nodeport` listener. Pin the listener to the
+# same ports and advertise localhost, for example:
+#
+#   listeners:
+#     - name: external
+#       port: 9094
+#       type: nodeport
+#       tls: false
+#       configuration:
+#         bootstrap:
+#           nodePort: 30092
+#         brokers:
+#           - broker: 0
+#             nodePort: 30093
+#             advertisedHost: localhost
+#             advertisedPort: 30093
+#           - broker: 1
+#             nodePort: 30094
+#             advertisedHost: localhost
+#             advertisedPort: 30094
+#           - broker: 2
+#             nodePort: 30095
+#             advertisedHost: localhost
+#             advertisedPort: 30095
+#
+# Then connect with: --bootstrap-server localhost:30092
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: strimzi
+nodes:
+  - role: control-plane
+    # kube-proxy forwards NodePorts from every node, so mapping them on the
+    # control plane is enough to reach brokers running on any worker.
+    extraPortMappings:
+      - containerPort: 30092 # Kafka bootstrap
+        hostPort: 30092
+        protocol: TCP
+      - containerPort: 30093 # Broker 0
+        hostPort: 30093
+        protocol: TCP
+      - containerPort: 30094 # Broker 1
+        hostPort: 30094
+        protocol: TCP
+      - containerPort: 30095 # Broker 2
+        hostPort: 30095
+        protocol: TCP
+  - role: worker
+    labels:
+      topology.kubernetes.io/zone: zone-a
+  - role: worker
+    labels:
+      topology.kubernetes.io/zone: zone-b
+  - role: worker
+    labels:
+      topology.kubernetes.io/zone: zone-c
