@@ -1,0 +1,64 @@
+---
+apiVersion: kafka.strimzi.io/v1          # use whatever api-resources showed (v1 or v1beta2)
+kind: KafkaNodePool
+metadata:
+  name: dual-role
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: my-cluster       # links this pool to the Kafka CR below
+spec:
+  replicas: 3
+  roles:
+    - controller                         # KRaft controllers (no ZooKeeper)
+    - broker
+  storage:
+    type: jbod
+    volumes:
+      - id: 0
+        type: persistent-claim
+        size: 5Gi
+        deleteClaim: true                # PVCs go away when you delete
+        kraftMetadata: shared
+---
+apiVersion: kafka.strimzi.io/v1
+kind: Kafka
+metadata:
+  name: my-cluster
+  namespace: kafka
+spec:
+  kafka:
+    rack:
+      topologyKey: topology.kubernetes.io/zone   # the zone-a/b/c labels
+    listeners:
+      - name: plain
+        port: 9092
+        type: internal
+        tls: false
+      - name: external
+        port: 9094
+        type: nodeport
+        tls: false
+        configuration:
+          bootstrap:
+            nodePort: 30092
+          brokers:
+            - broker: 0
+              nodePort: 30093
+              advertisedHost: localhost
+              advertisedPort: 30093
+            - broker: 1
+              nodePort: 30094
+              advertisedHost: localhost
+              advertisedPort: 30094
+            - broker: 2
+              nodePort: 30095
+              advertisedHost: localhost
+              advertisedPort: 30095
+    config:
+      default.replication.factor: 3
+      min.insync.replicas: 2
+      offsets.topic.replication.factor: 3
+      transaction.state.log.replication.factor: 3
+      transaction.state.log.min.isr: 2
+  entityOperator:
+    topicOperator: {}
