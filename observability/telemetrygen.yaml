@@ -1,0 +1,25 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: telemetrygen
+  namespace: observability
+spec:
+  backoffLimit: 2
+  ttlSecondsAfterFinished: 300
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: traces
+          image: ghcr.io/open-telemetry/opentelemetry-collector-contrib/telemetrygen:latest
+          args: ["traces", "--otlp-insecure", "--otlp-endpoint", "lgtm.observability.svc:4317",
+                 "--traces", "20", "--service", "in-cluster-test"]
+        - name: metrics
+          image: ghcr.io/open-telemetry/opentelemetry-collector-contrib/telemetrygen:latest
+          args: ["metrics", "--otlp-insecure", "--otlp-endpoint", "lgtm.observability.svc:4317",
+                 "--metrics", "20", "--metric-type", "Sum", "--service", "in-cluster-test"]
+        - name: logs
+          image: ghcr.io/open-telemetry/opentelemetry-collector-contrib/telemetrygen:latest
+          args: ["logs", "--otlp-insecure", "--otlp-endpoint", "lgtm.observability.svc:4317",
+                 "--logs", "20", "--body", "hello from telemetrygen", "--service", "in-cluster-test"]
