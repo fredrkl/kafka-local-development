@@ -1,12 +1,15 @@
 # Local Kafka development with Strimzi and Kind
 
-This repo is intended to be a sandbox for local development and testing Kafka,
-Strimzi, and Kubernetes(K8s).
+This repo is intended to be a sandbox for local development and testing. It has
+local Kafka using the Strimzi operator, and Kubernetes(K8s). Additionally, is
+has a full [LGTM OTel
+setup](https://grafana.com/docs/opentelemetry/docker-lgtm/#run-lgtm-in-kubernetes)
+for local throubleshooting. The goal is to create a compelling inner-loop
+development experience.
 
 ## Local Kafka development
 
-This repository contains a local Kafka development environment using a Kind
-cluster and Strimzi. Strimzi is an open-source project that provides a way to
+Strimzi is an open-source project that provides a way to
 run Apache Kafka on Kubernetes and OpenShift. It simplifies the deployment and
 management of Kafka clusters on Kubernetes by providing custom resources and
 operators that handle the complexity of running Kafka in a cloud-native
@@ -101,3 +104,35 @@ customer-8:{"orderId": 5, "item": "cake", "qty": 3}
 kcat -b localhost:30092 -X broker.address.family=v4 -t \
 orders -C -f 'p%p o%o  %k => %s\n' -e
 ```
+
+## Observability
+
+In order to setup the observability stack, we can use the provided
+`observability/lgtm.yaml` file to deploy LGTM (Grafana, Loki, Tempo, and
+Prometheus) in the Kind cluster.
+
+We will have a local OTel collector exposes on our local machine.
+
+Please notice, that everything is running in memory, and this is **not**
+intended for production.
+
+### Verify
+
+In order to verify the LGTM inner-loop stack, we can use the following
+`telemetrygen` tool:
+
+```bash
+kubectl apply -f observability/telemetrygen.yaml -n observability
+```
+
+### Local Grafana
+
+In order to access the Grafana dashboard, and the open telemetry collector
+endpoints, run:
+
+```bash
+kubectl port-forward service/lgtm 3000:3000 4317:4317 4318:4318 \
+-n observability
+```
+
+Then open <http://localhost:3000> in your browser.
